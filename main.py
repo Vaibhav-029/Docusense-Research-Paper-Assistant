@@ -1,12 +1,10 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
 from langchain_community.vectorstores import Chroma
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.messages import HumanMessage, AIMessage
 from dotenv import load_dotenv
 import os
 import shutil
@@ -22,7 +20,6 @@ llm = ChatGoogleGenerativeAI(
     google_api_key=os.getenv("GEMINI_API_KEY")
 )
 
-# Store chat histories per session
 chat_histories = {}
 
 @app.get("/")
@@ -34,37 +31,48 @@ def serve_frontend():
     return FileResponse("index.html")
 
 @app.post("/upload")
-async def upload_paper(file: UploadFile = File(...)):
-    temp_path = f"temp_{uuid.uuid4().hex}.pdf"
-    with open(temp_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+async def upload_paper(files: list[UploadFile] = File(...)):
+    total_pages = 0
+    total_chunks = 0
+    uploaded_files = []
 
-    loader = PyPDFLoader(temp_path)
-    pages = loader.load()
+    for file in files:
+        temp_path = f"temp_{uuid.uuid4().hex}.pdf"
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
 
-    splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50
-    )
-    chunks = splitter.split_documents(pages)
+        loader = PyPDFLoader(temp_path)
+        pages = loader.load()
 
-    vectorstore = Chroma.from_documents(
-        documents=chunks,
-        embedding=embeddings,
-        persist_directory="./chroma_db"
-    )
+        for page in pages:
+            page.metadata["source_file"] = file.filename
 
-    os.remove(temp_path)
+        splitter = RecursiveCharacterTextSplitter(
+            chunk_size=500,
+            chunk_overlap=50
+        )
+        chunks = splitter.split_documents(pages)
+
+        Chroma.from_documents(
+            documents=chunks,
+            embedding=embeddings,
+            persist_directory="./chroma_db"
+        )
+
+        os.remove(temp_path)
+        total_pages += len(pages)
+        total_chunks += len(chunks)
+        uploaded_files.append(file.filename)
 
     return {
-        "message": "Paper uploaded successfully",
-        "pages": len(pages),
-        "chunks": len(chunks)
+        "message": "Papers uploaded successfully",
+        "files": uploaded_files,
+        "total_pages": total_pages,
+        "total_chunks": total_chunks
     }
 
 @app.post("/ask")
 async def ask_question(question: str, session_id: str = "default"):
-    # Get or create chat history for this session
     if session_id not in chat_histories:
         chat_histories[session_id] = []
 
@@ -75,11 +83,10 @@ async def ask_question(question: str, session_id: str = "default"):
         embedding_function=embeddings
     )
 
-    # If there's history, rewrite the question with context
     if history:
         history_text = "\n".join([
             f"Human: {msg['human']}\nAssistant: {msg['ai']}"
-            for msg in history[-3:]  # last 3 exchanges
+            for msg in history[-3:]
         ])
 
         rewrite_prompt = f"""Given this conversation history:
@@ -96,11 +103,9 @@ Return only the rewritten question, nothing else."""
     else:
         search_query = question
 
-    # Search ChromaDB with the rewritten question
     docs = vectorstore.similarity_search(search_query, k=3)
     context = "\n\n".join([doc.page_content for doc in docs])
 
-    # Build history context for the prompt
     history_context = ""
     if history:
         history_context = "\n\nConversation so far:\n" + "\n".join([
@@ -123,7 +128,6 @@ Answer:"""
 
     response = llm.invoke(prompt)
 
-    # Save to history
     chat_histories[session_id].append({
         "human": question,
         "ai": response.content
@@ -132,7 +136,13 @@ Answer:"""
     return {
         "question": question,
         "answer": response.content,
-        "sources": [doc.page_content[:200] for doc in docs],
+        "sources": [
+            {
+                "file": doc.metadata.get("source_file", "unknown"),
+                "content": doc.page_content[:200]
+            }
+            for doc in docs
+        ],
         "history_length": len(chat_histories[session_id])
     }
 
