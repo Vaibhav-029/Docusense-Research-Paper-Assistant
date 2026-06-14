@@ -3,141 +3,215 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Research Paper Assistant</title>
+    <title>DocuSense</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #fff; min-height: 100vh; }
-        .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
-        h1 { font-size: 28px; margin-bottom: 8px; background: linear-gradient(90deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        p.subtitle { color: #666; margin-bottom: 32px; font-size: 14px; }
-        .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
-        .card h2 { font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
-        .upload-area { border: 2px dashed #333; border-radius: 8px; padding: 32px; text-align: center; cursor: pointer; transition: border-color .2s; }
-        .upload-area:hover { border-color: #6366f1; }
-        .upload-area input { display: none; }
-        .upload-area p { color: #666; font-size: 14px; }
-        .upload-area p span { color: #6366f1; }
-        .btn { background: linear-gradient(90deg, #6366f1, #8b5cf6); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; width: 100%; margin-top: 12px; transition: opacity .2s; }
-        .btn:hover { opacity: 0.9; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        .status { font-size: 13px; margin-top: 10px; padding: 8px 12px; border-radius: 6px; display: none; }
-        .status.success { background: #0d2818; color: #4ade80; display: block; }
-        .status.error { background: #2d0f0f; color: #f87171; display: block; }
-        .status.loading { background: #1a1a2e; color: #818cf8; display: block; }
-        textarea { width: 100%; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px; color: #fff; font-size: 14px; resize: vertical; min-height: 80px; outline: none; font-family: inherit; }
-        textarea:focus { border-color: #6366f1; }
-        .answer-box { background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 16px; margin-top: 16px; display: none; }
-        .answer-box h3 { font-size: 13px; color: #6366f1; margin-bottom: 10px; }
-        .answer-text { font-size: 14px; line-height: 1.7; color: #ccc; white-space: pre-wrap; }
-        .sources { margin-top: 16px; }
-        .sources h3 { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
-        .source-item { background: #1a1a1a; border-left: 3px solid #6366f1; padding: 8px 12px; margin-bottom: 6px; border-radius: 0 6px 6px 0; font-size: 12px; color: #888; line-height: 1.5; }
-        .file-name { font-size: 13px; color: #6366f1; margin-top: 8px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #fff; height: 100vh; display: flex; flex-direction: column; }
+        .header { padding: 16px 24px; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; justify-content: space-between; }
+        .header h1 { font-size: 20px; background: linear-gradient(90deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header p { font-size: 12px; color: #555; }
+        .upload-bar { padding: 12px 24px; background: #141414; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; gap: 12px; }
+        .upload-bar input[type="file"] { display: none; }
+        .upload-label { font-size: 13px; color: #6366f1; cursor: pointer; border: 1px solid #6366f1; padding: 6px 14px; border-radius: 6px; transition: .2s; }
+        .upload-label:hover { background: #6366f1; color: white; }
+        .file-status { font-size: 12px; color: #666; }
+        .file-status.success { color: #4ade80; }
+        .btn-upload { font-size: 12px; background: #6366f1; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; }
+        .btn-upload:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-clear { font-size: 12px; background: transparent; color: #666; border: 1px solid #333; padding: 6px 14px; border-radius: 6px; cursor: pointer; margin-left: auto; }
+        .btn-clear:hover { border-color: #f87171; color: #f87171; }
+        .chat-area { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+        .message { max-width: 80%; }
+        .message.human { align-self: flex-end; }
+        .message.ai { align-self: flex-start; }
+        .message-bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.7; }
+        .human .message-bubble { background: #6366f1; color: white; border-radius: 12px 12px 2px 12px; }
+        .ai .message-bubble { background: #1a1a1a; color: #ccc; border: 1px solid #2a2a2a; border-radius: 12px 12px 12px 2px; }
+        .ai .message-bubble pre { white-space: pre-wrap; font-family: inherit; }
+        .sources-toggle { font-size: 11px; color: #555; cursor: pointer; margin-top: 6px; padding-left: 4px; }
+        .sources-toggle:hover { color: #6366f1; }
+        .sources-list { margin-top: 6px; display: none; }
+        .sources-list.open { display: block; }
+        .source-item { background: #111; border-left: 2px solid #6366f1; padding: 6px 10px; margin-bottom: 4px; font-size: 11px; color: #666; border-radius: 0 4px 4px 0; line-height: 1.5; }
+        .thinking { align-self: flex-start; font-size: 13px; color: #555; padding: 8px 0; }
+        .thinking span { animation: blink 1.2s infinite; }
+        .thinking span:nth-child(2) { animation-delay: .2s; }
+        .thinking span:nth-child(3) { animation-delay: .4s; }
+        @keyframes blink { 0%,80%,100%{opacity:0} 40%{opacity:1} }
+        .input-area { padding: 16px 24px; border-top: 1px solid #1e1e1e; display: flex; gap: 10px; }
+        .input-area textarea { flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 14px; resize: none; outline: none; font-family: inherit; max-height: 120px; }
+        .input-area textarea:focus { border-color: #6366f1; }
+        .btn-send { background: #6366f1; color: white; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 18px; transition: opacity .2s; }
+        .btn-send:hover { opacity: 0.85; }
+        .btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+        .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #333; }
+        .empty-state h2 { font-size: 18px; margin-bottom: 8px; }
+        .empty-state p { font-size: 13px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Research Paper Assistant</h1>
-        <p class="subtitle">Upload any research paper or PDF and ask questions about it</p>
+    <div class="header">
+        <h1>DocuSense</h1>
+        <p>Research Paper Assistant</p>
+    </div>
 
-        <div class="card">
-            <h2>1. Upload Paper</h2>
-            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-                <input type="file" id="fileInput" accept=".pdf" onchange="handleFileSelect(this)">
-                <p>Drop your PDF here or <span>browse</span></p>
-                <p class="file-name" id="fileName"></p>
-            </div>
-            <button class="btn" id="uploadBtn" onclick="uploadPaper()" disabled>Upload Paper</button>
-            <div class="status" id="uploadStatus"></div>
-        </div>
+    <div class="upload-bar">
+        <label class="upload-label" for="fileInput">Choose PDF</label>
+        <input type="file" id="fileInput" accept=".pdf" onchange="handleFile(this)">
+        <span class="file-status" id="fileStatus">No file selected</span>
+        <button class="btn-upload" id="uploadBtn" onclick="uploadPaper()" disabled>Upload</button>
+        <button class="btn-clear" onclick="clearChat()">Clear chat</button>
+    </div>
 
-        <div class="card">
-            <h2>2. Ask a Question</h2>
-            <textarea id="question" placeholder="What is the main contribution of this paper?&#10;What methodology was used?&#10;Summarise the key findings." rows="3"></textarea>
-            <button class="btn" id="askBtn" onclick="askQuestion()">Ask Question</button>
-            <div class="status" id="askStatus"></div>
-            <div class="answer-box" id="answerBox">
-                <h3>Answer</h3>
-                <div class="answer-text" id="answerText"></div>
-                <div class="sources" id="sourcesDiv">
-                    <h3>Sources from document</h3>
-                    <div id="sourcesList"></div>
-                </div>
-            </div>
+    <div class="chat-area" id="chatArea">
+        <div class="empty-state" id="emptyState">
+            <h2>Upload a paper to get started</h2>
+            <p>Then ask anything about it below</p>
         </div>
+    </div>
+
+    <div class="input-area">
+        <textarea id="question" placeholder="Ask a question about your paper... (Shift+Enter for new line)" rows="1"
+            onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="btn-send" id="sendBtn" onclick="askQuestion()">↑</button>
     </div>
 
     <script>
         let selectedFile = null;
+        let sessionId = 'session_' + Date.now();
+        let isUploaded = false;
 
-        function handleFileSelect(input) {
+        function handleFile(input) {
             selectedFile = input.files[0];
             if (selectedFile) {
-                document.getElementById('fileName').textContent = selectedFile.name;
+                document.getElementById('fileStatus').textContent = selectedFile.name;
                 document.getElementById('uploadBtn').disabled = false;
             }
         }
 
         async function uploadPaper() {
             if (!selectedFile) return;
-            const status = document.getElementById('uploadStatus');
+            const status = document.getElementById('fileStatus');
             const btn = document.getElementById('uploadBtn');
-            
-            status.className = 'status loading';
-            status.textContent = 'Uploading and processing paper...';
+            status.textContent = 'Uploading...';
+            status.className = 'file-status';
             btn.disabled = true;
 
             const formData = new FormData();
             formData.append('file', selectedFile);
 
             try {
-                const res = await fetch('http://localhost:8000/upload', {
-                    method: 'POST',
-                    body: formData
-                });
+                const res = await fetch('http://localhost:8000/upload', { method: 'POST', body: formData });
                 const data = await res.json();
-                status.className = 'status success';
-                status.textContent = `✓ Uploaded successfully — ${data.pages} pages, ${data.chunks} chunks ready`;
+                status.textContent = `✓ ${selectedFile.name} (${data.pages} pages, ${data.chunks} chunks)`;
+                status.className = 'file-status success';
+                isUploaded = true;
+                document.getElementById('emptyState').style.display = 'none';
+                addSystemMessage(`Paper uploaded successfully! ${data.pages} pages processed into ${data.chunks} chunks. Ask me anything about it.`);
             } catch (err) {
-                status.className = 'status error';
-                status.textContent = 'Upload failed. Make sure the API is running.';
+                status.textContent = 'Upload failed';
+                status.className = 'file-status';
                 btn.disabled = false;
             }
         }
 
+        function addSystemMessage(text) {
+            const chatArea = document.getElementById('chatArea');
+            const div = document.createElement('div');
+            div.className = 'message ai';
+            div.innerHTML = `<div class="message-bubble"><pre>${text}</pre></div>`;
+            chatArea.appendChild(div);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function addHumanMessage(text) {
+            const chatArea = document.getElementById('chatArea');
+            const div = document.createElement('div');
+            div.className = 'message human';
+            div.innerHTML = `<div class="message-bubble">${text}</div>`;
+            chatArea.appendChild(div);
+            chatArea.scrollTop = chatArea.scrollHeight;
+            return div;
+        }
+
+        function addThinking() {
+            const chatArea = document.getElementById('chatArea');
+            const div = document.createElement('div');
+            div.className = 'thinking';
+            div.id = 'thinking';
+            div.innerHTML = `DocuSense is thinking<span>.</span><span>.</span><span>.</span>`;
+            chatArea.appendChild(div);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function removeThinking() {
+            const t = document.getElementById('thinking');
+            if (t) t.remove();
+        }
+
+        function addAIMessage(answer, sources) {
+            const chatArea = document.getElementById('chatArea');
+            const div = document.createElement('div');
+            div.className = 'message ai';
+            const sourceId = 'src_' + Date.now();
+            div.innerHTML = `
+                <div class="message-bubble"><pre>${answer}</pre></div>
+                <div class="sources-toggle" onclick="toggleSources('${sourceId}')">▸ View sources (${sources.length})</div>
+                <div class="sources-list" id="${sourceId}">
+                    ${sources.map((s, i) => `<div class="source-item"><b>Source ${i+1}:</b> ${s}</div>`).join('')}
+                </div>`;
+            chatArea.appendChild(div);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function toggleSources(id) {
+            const el = document.getElementById(id);
+            el.classList.toggle('open');
+        }
+
         async function askQuestion() {
-            const question = document.getElementById('question').value.trim();
+            const input = document.getElementById('question');
+            const question = input.value.trim();
             if (!question) return;
 
-            const status = document.getElementById('askStatus');
-            const answerBox = document.getElementById('answerBox');
-            
-            status.className = 'status loading';
-            status.textContent = 'Thinking...';
-            answerBox.style.display = 'none';
+            addHumanMessage(question);
+            input.value = '';
+            input.style.height = 'auto';
+            document.getElementById('sendBtn').disabled = true;
+            addThinking();
 
             try {
-                const res = await fetch(`http://localhost:8000/ask?question=${encodeURIComponent(question)}`, {
+                const res = await fetch(`http://localhost:8000/ask?question=${encodeURIComponent(question)}&session_id=${sessionId}`, {
                     method: 'POST'
                 });
                 const data = await res.json();
-                
-                status.className = 'status success';
-                status.textContent = '✓ Answer ready';
-                
-                document.getElementById('answerText').textContent = data.answer;
-                
-                const sourcesList = document.getElementById('sourcesList');
-                sourcesList.innerHTML = '';
-                data.sources.forEach((src, i) => {
-                    sourcesList.innerHTML += `<div class="source-item"><b>Source ${i+1}:</b> ${src}</div>`;
-                });
-                
-                answerBox.style.display = 'block';
+                removeThinking();
+                addAIMessage(data.answer, data.sources);
             } catch (err) {
-                status.className = 'status error';
-                status.textContent = 'Something went wrong. Make sure the API is running.';
+                removeThinking();
+                addSystemMessage('Something went wrong. Make sure the API is running.');
             }
+
+            document.getElementById('sendBtn').disabled = false;
+        }
+
+        async function clearChat() {
+            await fetch(`http://localhost:8000/clear/${sessionId}`, { method: 'DELETE' });
+            sessionId = 'session_' + Date.now();
+            const chatArea = document.getElementById('chatArea');
+            chatArea.innerHTML = '<div class="empty-state" id="emptyState"><h2>Chat cleared</h2><p>Ask a new question below</p></div>';
+        }
+
+        function handleKey(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                askQuestion();
+            }
+        }
+
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
         }
     </script>
 </body>
