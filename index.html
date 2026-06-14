@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Paper Assistant</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #fff; min-height: 100vh; }
+        .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+        h1 { font-size: 28px; margin-bottom: 8px; background: linear-gradient(90deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        p.subtitle { color: #666; margin-bottom: 32px; font-size: 14px; }
+        .card { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+        .card h2 { font-size: 14px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+        .upload-area { border: 2px dashed #333; border-radius: 8px; padding: 32px; text-align: center; cursor: pointer; transition: border-color .2s; }
+        .upload-area:hover { border-color: #6366f1; }
+        .upload-area input { display: none; }
+        .upload-area p { color: #666; font-size: 14px; }
+        .upload-area p span { color: #6366f1; }
+        .btn { background: linear-gradient(90deg, #6366f1, #8b5cf6); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; width: 100%; margin-top: 12px; transition: opacity .2s; }
+        .btn:hover { opacity: 0.9; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .status { font-size: 13px; margin-top: 10px; padding: 8px 12px; border-radius: 6px; display: none; }
+        .status.success { background: #0d2818; color: #4ade80; display: block; }
+        .status.error { background: #2d0f0f; color: #f87171; display: block; }
+        .status.loading { background: #1a1a2e; color: #818cf8; display: block; }
+        textarea { width: 100%; background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 12px; color: #fff; font-size: 14px; resize: vertical; min-height: 80px; outline: none; font-family: inherit; }
+        textarea:focus { border-color: #6366f1; }
+        .answer-box { background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 16px; margin-top: 16px; display: none; }
+        .answer-box h3 { font-size: 13px; color: #6366f1; margin-bottom: 10px; }
+        .answer-text { font-size: 14px; line-height: 1.7; color: #ccc; white-space: pre-wrap; }
+        .sources { margin-top: 16px; }
+        .sources h3 { font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+        .source-item { background: #1a1a1a; border-left: 3px solid #6366f1; padding: 8px 12px; margin-bottom: 6px; border-radius: 0 6px 6px 0; font-size: 12px; color: #888; line-height: 1.5; }
+        .file-name { font-size: 13px; color: #6366f1; margin-top: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Research Paper Assistant</h1>
+        <p class="subtitle">Upload any research paper or PDF and ask questions about it</p>
+
+        <div class="card">
+            <h2>1. Upload Paper</h2>
+            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                <input type="file" id="fileInput" accept=".pdf" onchange="handleFileSelect(this)">
+                <p>Drop your PDF here or <span>browse</span></p>
+                <p class="file-name" id="fileName"></p>
+            </div>
+            <button class="btn" id="uploadBtn" onclick="uploadPaper()" disabled>Upload Paper</button>
+            <div class="status" id="uploadStatus"></div>
+        </div>
+
+        <div class="card">
+            <h2>2. Ask a Question</h2>
+            <textarea id="question" placeholder="What is the main contribution of this paper?&#10;What methodology was used?&#10;Summarise the key findings." rows="3"></textarea>
+            <button class="btn" id="askBtn" onclick="askQuestion()">Ask Question</button>
+            <div class="status" id="askStatus"></div>
+            <div class="answer-box" id="answerBox">
+                <h3>Answer</h3>
+                <div class="answer-text" id="answerText"></div>
+                <div class="sources" id="sourcesDiv">
+                    <h3>Sources from document</h3>
+                    <div id="sourcesList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+
+        function handleFileSelect(input) {
+            selectedFile = input.files[0];
+            if (selectedFile) {
+                document.getElementById('fileName').textContent = selectedFile.name;
+                document.getElementById('uploadBtn').disabled = false;
+            }
+        }
+
+        async function uploadPaper() {
+            if (!selectedFile) return;
+            const status = document.getElementById('uploadStatus');
+            const btn = document.getElementById('uploadBtn');
+            
+            status.className = 'status loading';
+            status.textContent = 'Uploading and processing paper...';
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            try {
+                const res = await fetch('http://localhost:8000/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await res.json();
+                status.className = 'status success';
+                status.textContent = `✓ Uploaded successfully — ${data.pages} pages, ${data.chunks} chunks ready`;
+            } catch (err) {
+                status.className = 'status error';
+                status.textContent = 'Upload failed. Make sure the API is running.';
+                btn.disabled = false;
+            }
+        }
+
+        async function askQuestion() {
+            const question = document.getElementById('question').value.trim();
+            if (!question) return;
+
+            const status = document.getElementById('askStatus');
+            const answerBox = document.getElementById('answerBox');
+            
+            status.className = 'status loading';
+            status.textContent = 'Thinking...';
+            answerBox.style.display = 'none';
+
+            try {
+                const res = await fetch(`http://localhost:8000/ask?question=${encodeURIComponent(question)}`, {
+                    method: 'POST'
+                });
+                const data = await res.json();
+                
+                status.className = 'status success';
+                status.textContent = '✓ Answer ready';
+                
+                document.getElementById('answerText').textContent = data.answer;
+                
+                const sourcesList = document.getElementById('sourcesList');
+                sourcesList.innerHTML = '';
+                data.sources.forEach((src, i) => {
+                    sourcesList.innerHTML += `<div class="source-item"><b>Source ${i+1}:</b> ${src}</div>`;
+                });
+                
+                answerBox.style.display = 'block';
+            } catch (err) {
+                status.className = 'status error';
+                status.textContent = 'Something went wrong. Make sure the API is running.';
+            }
+        }
+    </script>
+</body>
+</html>
