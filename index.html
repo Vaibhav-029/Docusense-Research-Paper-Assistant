@@ -7,229 +7,406 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #fff; height: 100vh; display: flex; flex-direction: column; }
-        .header { padding: 16px 24px; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; justify-content: space-between; }
+        .header { padding: 14px 24px; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; justify-content: space-between; }
         .header h1 { font-size: 20px; background: linear-gradient(90deg, #6366f1, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .header p { font-size: 12px; color: #555; }
-        .upload-bar { padding: 12px 24px; background: #141414; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-        .upload-bar input[type="file"] { display: none; }
-        .upload-label { font-size: 13px; color: #6366f1; cursor: pointer; border: 1px solid #6366f1; padding: 6px 14px; border-radius: 6px; transition: .2s; white-space: nowrap; }
+        .header-right { display: flex; gap: 8px; align-items: center; }
+        .mode-btn { font-size: 12px; padding: 5px 12px; border-radius: 20px; cursor: pointer; border: 1px solid #333; background: transparent; color: #666; transition: .2s; }
+        .mode-btn.active { background: #6366f1; color: white; border-color: #6366f1; }
+        .upload-bar { padding: 10px 24px; background: #141414; border-bottom: 1px solid #1e1e1e; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        input[type="file"] { display: none; }
+        .upload-label { font-size: 12px; color: #6366f1; cursor: pointer; border: 1px solid #6366f1; padding: 5px 12px; border-radius: 6px; transition: .2s; white-space: nowrap; }
         .upload-label:hover { background: #6366f1; color: white; }
-        .file-status { font-size: 12px; color: #666; flex: 1; }
+        .file-status { font-size: 12px; color: #666; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .file-status.success { color: #4ade80; }
         .file-status.loading { color: #818cf8; }
-        .btn-upload { font-size: 12px; background: #6366f1; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+        .btn { font-size: 12px; color: white; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; white-space: nowrap; transition: opacity .2s; }
+        .btn-upload { background: #6366f1; }
         .btn-upload:disabled { opacity: 0.4; cursor: not-allowed; }
-        .btn-clear { font-size: 12px; background: transparent; color: #666; border: 1px solid #333; padding: 6px 14px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+        .btn-clear { background: transparent; color: #666; border: 1px solid #333; }
         .btn-clear:hover { border-color: #f87171; color: #f87171; }
-        .chat-area { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
-        .message { max-width: 80%; }
+        .file-tags { display: none; flex-wrap: wrap; gap: 6px; padding: 8px 24px; background: #0a0a0a; border-bottom: 1px solid #1e1e1e; }
+        .file-tag { font-size: 11px; background: #1a1a2e; color: #6366f1; border: 1px solid #2a2a4e; padding: 3px 10px; border-radius: 20px; }
+
+        .debate-bar { display: none; padding: 10px 24px; background: #0a0a0a; border-bottom: 1px solid #1e1e1e; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .debate-bar.visible { display: flex; }
+        .debate-select { background: #1a1a1a; border: 1px solid #2a2a2a; color: #ccc; padding: 5px 10px; border-radius: 6px; font-size: 12px; }
+        .btn-debate { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+
+        .flashcard-bar { display: none; padding: 10px 24px; background: #0a0a0a; border-bottom: 1px solid #1e1e1e; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .flashcard-bar.visible { display: flex; }
+        .btn-flashcard { background: linear-gradient(90deg, #10b981, #059669); }
+
+        .chat-area { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 14px; }
+        .message { max-width: 82%; }
         .message.human { align-self: flex-end; }
-        .message.ai { align-self: flex-start; }
-        .message-bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.7; }
+        .message.ai { align-self: flex-start; max-width: 90%; }
+        .message-bubble { padding: 12px 16px; border-radius: 12px; font-size: 14px; line-height: 1.7; white-space: pre-wrap; }
         .human .message-bubble { background: #6366f1; color: white; border-radius: 12px 12px 2px 12px; }
-        .ai .message-bubble { background: #1a1a1a; color: #ccc; border: 1px solid #2a2a2a; border-radius: 12px 12px 12px 2px; white-space: pre-wrap; }
-        .sources-toggle { font-size: 11px; color: #555; cursor: pointer; margin-top: 6px; padding-left: 4px; }
+        .ai .message-bubble { background: #1a1a1a; color: #ccc; border: 1px solid #2a2a2a; border-radius: 12px 12px 12px 2px; }
+        .message-label { font-size: 10px; color: #6366f1; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .05em; }
+        .sources-toggle { font-size: 11px; color: #555; cursor: pointer; margin-top: 5px; padding-left: 2px; }
         .sources-toggle:hover { color: #6366f1; }
-        .sources-list { margin-top: 6px; display: none; }
+        .sources-list { margin-top: 5px; display: none; }
         .sources-list.open { display: block; }
         .source-item { background: #111; border-left: 2px solid #6366f1; padding: 6px 10px; margin-bottom: 4px; font-size: 11px; color: #666; border-radius: 0 4px 4px 0; line-height: 1.5; }
         .source-file { color: #6366f1; font-weight: 600; }
-        .thinking { align-self: flex-start; font-size: 13px; color: #555; padding: 8px 0; }
-        .thinking span { animation: blink 1.2s infinite; }
-        .thinking span:nth-child(2) { animation-delay: .2s; }
-        .thinking span:nth-child(3) { animation-delay: .4s; }
-        @keyframes blink { 0%,80%,100%{opacity:0} 40%{opacity:1} }
-        .input-area { padding: 16px 24px; border-top: 1px solid #1e1e1e; display: flex; gap: 10px; }
-        .input-area textarea { flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 14px; resize: none; outline: none; font-family: inherit; max-height: 120px; }
-        .input-area textarea:focus { border-color: #6366f1; }
-        .btn-send { background: #6366f1; color: white; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 18px; transition: opacity .2s; }
+        .thinking { align-self: flex-start; font-size: 13px; color: #555; padding: 6px 0; display: flex; align-items: center; gap: 6px; }
+        .dot { width: 6px; height: 6px; border-radius: 50%; background: #6366f1; animation: bounce .8s infinite; }
+        .dot:nth-child(2) { animation-delay: .15s; }
+        .dot:nth-child(3) { animation-delay: .3s; }
+        @keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:.4} 40%{transform:scale(1);opacity:1} }
+        .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #2a2a2a; text-align: center; gap: 8px; }
+        .empty-state h2 { font-size: 22px; }
+        .empty-state p { font-size: 13px; color: #333; }
+
+        .flashcard-container { align-self: flex-start; width: 100%; max-width: 600px; }
+        .flashcard-header { font-size: 12px; color: #6366f1; font-weight: 600; margin-bottom: 10px; text-transform: uppercase; letter-spacing: .06em; }
+        .flashcard { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 10px; padding: 16px; margin-bottom: 8px; cursor: pointer; transition: border-color .2s; }
+        .flashcard:hover { border-color: #6366f1; }
+        .flashcard-q { font-size: 13px; color: #ccc; font-weight: 500; }
+        .flashcard-a { font-size: 13px; color: #4ade80; margin-top: 8px; display: none; border-top: 1px solid #2a2a2a; padding-top: 8px; }
+        .flashcard-a.open { display: block; }
+        .flashcard-hint { font-size: 10px; color: #444; margin-top: 6px; }
+
+        .input-area { padding: 14px 24px; border-top: 1px solid #1e1e1e; display: flex; gap: 10px; }
+        textarea { flex: 1; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 8px; padding: 10px 14px; color: #fff; font-size: 14px; resize: none; outline: none; font-family: inherit; max-height: 120px; }
+        textarea:focus { border-color: #6366f1; }
+        .btn-send { background: #6366f1; color: white; border: none; padding: 10px 18px; border-radius: 8px; cursor: pointer; font-size: 18px; }
         .btn-send:hover { opacity: 0.85; }
         .btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
-        .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #333; text-align: center; }
-        .empty-state h2 { font-size: 18px; margin-bottom: 8px; }
-        .empty-state p { font-size: 13px; }
-        .file-tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 24px; background: #0f0f0f; border-bottom: 1px solid #1e1e1e; display: none; }
-        .file-tag { font-size: 11px; background: #1a1a2e; color: #6366f1; border: 1px solid #2a2a4e; padding: 3px 10px; border-radius: 20px; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>DocuSense</h1>
-        <p>Research Paper Assistant</p>
+
+<div class="header">
+    <h1>DocuSense</h1>
+    <div class="header-right">
+        <button class="mode-btn active" onclick="setMode('chat')" id="mode-chat">💬 Chat</button>
+        <button class="mode-btn" onclick="setMode('flashcards')" id="mode-flashcards">🃏 Flashcards</button>
+        <button class="mode-btn" onclick="setMode('debate')" id="mode-debate">⚔️ Debate</button>
+        <button class="btn btn-clear" onclick="clearChat()">Clear</button>
     </div>
+</div>
 
-    <div class="upload-bar">
-        <label class="upload-label" for="fileInput">Choose PDFs</label>
-        <input type="file" id="fileInput" accept=".pdf" multiple onchange="handleFile(this)">
-        <span class="file-status" id="fileStatus">No files selected</span>
-        <button class="btn-upload" id="uploadBtn" onclick="uploadPaper()" disabled>Upload</button>
-        <button class="btn-clear" onclick="clearChat()">Clear chat</button>
+<div class="upload-bar">
+    <label class="upload-label" for="fileInput">📎 Choose PDFs</label>
+    <input type="file" id="fileInput" accept=".pdf" multiple onchange="handleFile(event)">
+    <span class="file-status" id="fileStatus">No files selected</span>
+    <button class="btn btn-upload" id="uploadBtn" onclick="uploadPaper()" disabled>Upload</button>
+</div>
+
+<div class="file-tags" id="fileTags"></div>
+
+<div class="debate-bar" id="debateBar">
+    <span style="font-size:12px;color:#666">Paper A:</span>
+    <select class="debate-select" id="debatePaperA"></select>
+    <span style="font-size:12px;color:#666">vs</span>
+    <select class="debate-select" id="debatePaperB"></select>
+    <button class="btn btn-debate" onclick="startDebate()">⚔️ Start Debate</button>
+</div>
+
+<div class="flashcard-bar" id="flashcardBar">
+    <span style="font-size:12px;color:#666">Generate flashcards for:</span>
+    <select class="debate-select" id="flashcardFile"></select>
+    <button class="btn btn-flashcard" onclick="generateFlashcards()">🃏 Generate</button>
+</div>
+
+<div class="chat-area" id="chatArea">
+    <div class="empty-state" id="emptyState">
+        <h2>📄 DocuSense</h2>
+        <p>Upload one or more PDFs to get started</p>
+        <p style="color:#222;margin-top:4px">Chat · Flashcards · Paper vs Paper debate</p>
     </div>
+</div>
 
-    <div class="file-tags" id="fileTags"></div>
+<div class="input-area">
+    <textarea id="question" placeholder="Ask anything about your papers... (Enter to send)" rows="1"
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    <button class="btn-send" id="sendBtn" onclick="askQuestion()">↑</button>
+</div>
 
-    <div class="chat-area" id="chatArea">
-        <div class="empty-state" id="emptyState">
-            <h2>Upload papers to get started</h2>
-            <p>Select one or multiple PDFs, then ask anything about them</p>
-        </div>
-    </div>
+<script>
+    let selectedFiles = null;
+    let sessionId = 'session_' + Date.now();
+    let uploadedFileNames = [];
+    let currentMode = 'chat';
+    const API_BASE = window.location.origin;
 
-    <div class="input-area">
-        <textarea id="question" placeholder="Ask a question... (Enter to send, Shift+Enter for new line)" rows="1"
-            onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-        <button class="btn-send" id="sendBtn" onclick="askQuestion()">↑</button>
-    </div>
+    function setMode(mode) {
+        currentMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('mode-' + mode).classList.add('active');
+        document.getElementById('debateBar').classList.toggle('visible', mode === 'debate');
+        document.getElementById('flashcardBar').classList.toggle('visible', mode === 'flashcards');
+        document.getElementById('question').placeholder =
+            mode === 'debate' ? 'Enter the debate topic above, then click Start Debate...' :
+            mode === 'flashcards' ? 'Select a paper above and click Generate...' :
+            'Ask anything about your papers... (Enter to send)';
+    }
 
-    <script>
-        let selectedFiles = null;
-        let sessionId = 'session_' + Date.now();
+    function handleFile(e) {
+        const input = e.target;
+        selectedFiles = input.files;
+        if (selectedFiles.length > 0) {
+            document.getElementById('fileStatus').textContent = `${selectedFiles.length} file(s) selected`;
+            document.getElementById('uploadBtn').disabled = false;
+        }
+    }
 
-        function handleFile(input) {
-            selectedFiles = input.files;
-            if (selectedFiles.length > 0) {
-                const names = Array.from(selectedFiles).map(f => f.name).join(', ');
-                document.getElementById('fileStatus').textContent = 
-                    `${selectedFiles.length} file(s) selected`;
-                document.getElementById('uploadBtn').disabled = false;
+    function updateFileSelects(files) {
+        ['debatePaperA', 'debatePaperB', 'flashcardFile'].forEach(id => {
+            const sel = document.getElementById(id);
+            sel.innerHTML = files.map(f => `<option value="${f}">${f}</option>`).join('');
+        });
+        if (files.length >= 2) {
+            document.getElementById('debatePaperB').selectedIndex = 1;
+        }
+    }
+
+    async function uploadPaper() {
+        if (!selectedFiles || selectedFiles.length === 0) return;
+        const status = document.getElementById('fileStatus');
+        const btn = document.getElementById('uploadBtn');
+        status.className = 'file-status loading';
+        status.textContent = 'Processing papers...';
+        btn.disabled = true;
+
+        const formData = new FormData();
+        Array.from(selectedFiles).forEach(f => formData.append('files', f));
+
+        try {
+            const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData });
+            if (!res.ok) throw new Error('Upload failed: ' + res.status);
+            const data = await res.json();
+
+            status.className = 'file-status success';
+            status.textContent = `✓ ${data.files.length} file(s) — ${data.total_pages} pages ready`;
+            btn.disabled = false;
+
+            uploadedFileNames = [...new Set([...uploadedFileNames, ...data.files])];
+            updateFileSelects(uploadedFileNames);
+
+            const tagsDiv = document.getElementById('fileTags');
+            tagsDiv.style.display = 'flex';
+            tagsDiv.innerHTML = uploadedFileNames.map(f => `<span class="file-tag">📄 ${f}</span>`).join('');
+
+            const empty = document.getElementById('emptyState');
+            if (empty) empty.style.display = 'none';
+
+            addAIMessage(`✅ ${data.files.length} paper(s) uploaded!\n${data.files.map(f => `📄 ${f}`).join('\n')}\n\nGenerating summaries...`, [], 'DocuSense');
+
+            if (data.summaries) {
+                let delay = 400;
+                for (const [filename, summary] of Object.entries(data.summaries)) {
+                    setTimeout(() => {
+                        addAIMessage(`📋 Summary of ${filename}\n\n${summary}`, [], 'Summary');
+                    }, delay);
+                    delay += 300;
+                }
             }
+        } catch (err) {
+            console.error(err);
+            status.className = 'file-status';
+            status.textContent = 'Upload failed — is the API running?';
+            btn.disabled = false;
         }
+    }
 
-        async function uploadPaper() {
-            if (!selectedFiles || selectedFiles.length === 0) return;
-            const status = document.getElementById('fileStatus');
-            const btn = document.getElementById('uploadBtn');
+    function addAIMessage(text, sources, label) {
+        const chatArea = document.getElementById('chatArea');
+        const div = document.createElement('div');
+        div.className = 'message ai';
+        const srcId = 'src_' + Date.now() + Math.random().toString(36).slice(2);
+        const srcHtml = sources && sources.length > 0 ? `
+            <div class="sources-toggle" onclick="toggleSources('${srcId}')">▸ Sources (${sources.length})</div>
+            <div class="sources-list" id="${srcId}">
+                ${sources.map((s) => `<div class="source-item"><span class="source-file">📄 ${s.file}</span><br/>${s.content}</div>`).join('')}
+            </div>` : '';
+        div.innerHTML = `
+            ${label ? `<div class="message-label">${label}</div>` : ''}
+            <div class="message-bubble">${escapeHtml(text)}</div>
+            ${srcHtml}`;
+        chatArea.appendChild(div);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
 
-            status.className = 'file-status loading';
-            status.textContent = 'Uploading and processing...';
-            btn.disabled = true;
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.innerText = str;
+        return div.innerHTML;
+    }
 
-            const formData = new FormData();
-            Array.from(selectedFiles).forEach(file => {
-                formData.append('files', file);
-            });
+    function addHumanMessage(text) {
+        const chatArea = document.getElementById('chatArea');
+        const div = document.createElement('div');
+        div.className = 'message human';
+        div.innerHTML = `<div class="message-bubble">${escapeHtml(text)}</div>`;
+        chatArea.appendChild(div);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
 
-            try {
-                const res = await fetch('http://localhost:8000/upload', { method: 'POST', body: formData });
-                const data = await res.json();
+    function addThinking() {
+        const chatArea = document.getElementById('chatArea');
+        const div = document.createElement('div');
+        div.className = 'thinking';
+        div.id = 'thinking';
+        div.innerHTML = `<div class="dot"></div><div class="dot"></div><div class="dot"></div>`;
+        chatArea.appendChild(div);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
 
-                status.className = 'file-status success';
-                status.textContent = `✓ ${data.files.length} file(s) ready — ${data.total_pages} pages, ${data.total_chunks} chunks`;
+    function removeThinking() {
+        const t = document.getElementById('thinking');
+        if (t) t.remove();
+    }
 
-                // Show file tags
-                const tagsDiv = document.getElementById('fileTags');
-                tagsDiv.style.display = 'flex';
-                tagsDiv.innerHTML = data.files.map(f => `<span class="file-tag">📄 ${f}</span>`).join('');
+    function toggleSources(id) {
+        document.getElementById(id).classList.toggle('open');
+    }
 
-                document.getElementById('emptyState').style.display = 'none';
-                addAIMessage(`${data.files.length} paper(s) uploaded successfully!\n\n${data.files.map(f => `📄 ${f}`).join('\n')}\n\nTotal: ${data.total_pages} pages processed. Ask me anything about them.`, []);
-            } catch (err) {
-                status.className = 'file-status';
-                status.textContent = 'Upload failed — is the API running?';
-                btn.disabled = false;
-            }
-        }
+    async function askQuestion() {
+        const input = document.getElementById('question');
+        const question = input.value.trim();
+        if (!question) return;
 
-        function addAIMessage(answer, sources) {
-            const chatArea = document.getElementById('chatArea');
-            const div = document.createElement('div');
-            div.className = 'message ai';
-            const sourceId = 'src_' + Date.now();
-            const sourcesHtml = sources && sources.length > 0 ? `
-                <div class="sources-toggle" onclick="toggleSources('${sourceId}')">▸ View sources (${sources.length})</div>
-                <div class="sources-list" id="${sourceId}">
-                    ${sources.map((s, i) => `
-                        <div class="source-item">
-                            <span class="source-file">📄 ${s.file}</span><br/>
-                            ${s.content}
-                        </div>`).join('')}
-                </div>` : '';
-            div.innerHTML = `<div class="message-bubble">${answer}</div>${sourcesHtml}`;
-            chatArea.appendChild(div);
-            chatArea.scrollTop = chatArea.scrollHeight;
-        }
-
-        function addHumanMessage(text) {
-            const chatArea = document.getElementById('chatArea');
-            const div = document.createElement('div');
-            div.className = 'message human';
-            div.innerHTML = `<div class="message-bubble">${text}</div>`;
-            chatArea.appendChild(div);
-            chatArea.scrollTop = chatArea.scrollHeight;
-        }
-
-        function addThinking() {
-            const chatArea = document.getElementById('chatArea');
-            const div = document.createElement('div');
-            div.className = 'thinking';
-            div.id = 'thinking';
-            div.innerHTML = `DocuSense is thinking<span>.</span><span>.</span><span>.</span>`;
-            chatArea.appendChild(div);
-            chatArea.scrollTop = chatArea.scrollHeight;
-        }
-
-        function removeThinking() {
-            const t = document.getElementById('thinking');
-            if (t) t.remove();
-        }
-
-        function toggleSources(id) {
-            document.getElementById(id).classList.toggle('open');
-        }
-
-        async function askQuestion() {
-            const input = document.getElementById('question');
-            const question = input.value.trim();
-            if (!question) return;
-
-            addHumanMessage(question);
+        if (currentMode === 'debate') {
+            await startDebate(question);
             input.value = '';
             input.style.height = 'auto';
-            document.getElementById('sendBtn').disabled = true;
-            addThinking();
-
-            try {
-                const res = await fetch(
-                    `http://localhost:8000/ask?question=${encodeURIComponent(question)}&session_id=${sessionId}`,
-                    { method: 'POST' }
-                );
-                const data = await res.json();
-                removeThinking();
-                addAIMessage(data.answer, data.sources);
-            } catch (err) {
-                removeThinking();
-                addAIMessage('Something went wrong. Make sure the API is running.', []);
-            }
-
-            document.getElementById('sendBtn').disabled = false;
+            return;
+        }
+        if (currentMode === 'flashcards') {
+            return;
         }
 
-        async function clearChat() {
-            await fetch(`http://localhost:8000/clear/${sessionId}`, { method: 'DELETE' });
-            sessionId = 'session_' + Date.now();
-            document.getElementById('chatArea').innerHTML = `
-                <div class="empty-state" id="emptyState">
-                    <h2>Chat cleared</h2>
-                    <p>Upload a paper and ask a new question</p>
-                </div>`;
-            document.getElementById('fileTags').style.display = 'none';
-            document.getElementById('fileTags').innerHTML = '';
-            document.getElementById('fileStatus').textContent = 'No files selected';
-            document.getElementById('fileStatus').className = 'file-status';
-            document.getElementById('uploadBtn').disabled = true;
+        addHumanMessage(question);
+        input.value = '';
+        input.style.height = 'auto';
+        document.getElementById('sendBtn').disabled = true;
+        addThinking();
+
+        try {
+            const res = await fetch(
+                `${API_BASE}/ask?question=${encodeURIComponent(question)}&session_id=${sessionId}`,
+                { method: 'POST' }
+            );
+            if (!res.ok) throw new Error('Ask failed: ' + res.status);
+            const data = await res.json();
+            removeThinking();
+            addAIMessage(data.answer, data.sources, `DocuSense · ${data.query_type || 'chat'} mode`);
+        } catch (err) {
+            console.error(err);
+            removeThinking();
+            addAIMessage('Something went wrong. Make sure the API is running.', [], 'Error');
+        }
+        document.getElementById('sendBtn').disabled = false;
+    }
+
+    async function generateFlashcards() {
+        const filename = document.getElementById('flashcardFile').value;
+        if (!filename) {
+            addAIMessage('Upload a paper first.', [], 'Error');
+            return;
         }
 
-        function handleKey(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                askQuestion();
-            }
+        addThinking();
+        try {
+            const res = await fetch(`${API_BASE}/flashcards?filename=${encodeURIComponent(filename)}&count=10`, {
+                method: 'POST'
+            });
+            if (!res.ok) throw new Error('Flashcards failed: ' + res.status);
+            const data = await res.json();
+            removeThinking();
+
+            const chatArea = document.getElementById('chatArea');
+            const div = document.createElement('div');
+            div.className = 'flashcard-container';
+            div.innerHTML = `
+                <div class="flashcard-header">🃏 ${data.count} Flashcards — ${filename}</div>
+                ${data.flashcards.map((fc, i) => `
+                    <div class="flashcard" onclick="toggleFlashcard(this)">
+                        <div class="flashcard-q">Q${i+1}: ${escapeHtml(fc.question)}</div>
+                        <div class="flashcard-a">${escapeHtml(fc.answer)}</div>
+                        <div class="flashcard-hint">Click to reveal answer</div>
+                    </div>`).join('')}`;
+            chatArea.appendChild(div);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        } catch (err) {
+            console.error(err);
+            removeThinking();
+            addAIMessage('Failed to generate flashcards.', [], 'Error');
+        }
+    }
+
+    function toggleFlashcard(el) {
+        const ans = el.querySelector('.flashcard-a');
+        const hint = el.querySelector('.flashcard-hint');
+        ans.classList.toggle('open');
+        hint.textContent = ans.classList.contains('open') ? 'Click to hide' : 'Click to reveal answer';
+    }
+
+    async function startDebate(customQuestion) {
+        const paperA = document.getElementById('debatePaperA').value;
+        const paperB = document.getElementById('debatePaperB').value;
+        const question = customQuestion || document.getElementById('question').value.trim() || 'Compare and contrast the main arguments';
+
+        if (!paperA || !paperB) {
+            addAIMessage('Upload at least two papers first.', [], 'Error');
+            return;
+        }
+        if (paperA === paperB) {
+            addAIMessage('Please select two different papers for the debate.', [], 'Error');
+            return;
         }
 
-        function autoResize(el) {
-            el.style.height = 'auto';
-            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+        addHumanMessage(`⚔️ Debate: "${question}"\n📘 ${paperA} vs 📗 ${paperB}`);
+        addThinking();
+
+        try {
+            const res = await fetch(
+                `${API_BASE}/debate?question=${encodeURIComponent(question)}&paper_a=${encodeURIComponent(paperA)}&paper_b=${encodeURIComponent(paperB)}`,
+                { method: 'POST' }
+            );
+            if (!res.ok) throw new Error('Debate failed: ' + res.status);
+            const data = await res.json();
+            removeThinking();
+            addAIMessage(data.debate, [], '⚔️ Debate Result');
+        } catch (err) {
+            console.error(err);
+            removeThinking();
+            addAIMessage('Debate failed. Make sure both papers are uploaded.', [], 'Error');
         }
-    </script>
+    }
+
+    async function clearChat() {
+        try {
+            await fetch(`${API_BASE}/clear/${sessionId}`, { method: 'DELETE' });
+        } catch (e) {}
+        sessionId = 'session_' + Date.now();
+        document.getElementById('chatArea').innerHTML = `
+            <div class="empty-state" id="emptyState">
+                <h2>📄 DocuSense</h2>
+                <p>Upload one or more PDFs to get started</p>
+            </div>`;
+        document.getElementById('fileTags').style.display = 'none';
+        document.getElementById('fileTags').innerHTML = '';
+        document.getElementById('fileStatus').textContent = 'No files selected';
+        document.getElementById('fileStatus').className = 'file-status';
+        document.getElementById('uploadBtn').disabled = true;
+        uploadedFileNames = [];
+    }
+
+    function handleKey(e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            askQuestion();
+        }
+    }
+
+    function autoResize(el) {
+        el.style.height = 'auto';
+        el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }
+</script>
 </body>
 </html>
