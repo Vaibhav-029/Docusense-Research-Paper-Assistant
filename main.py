@@ -1,11 +1,6 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
 from dotenv import load_dotenv
 import os
 import shutil
@@ -33,17 +28,26 @@ llm = None
 def get_embeddings():
     global embeddings
     if embeddings is None:
+        from langchain_community.embeddings import HuggingFaceEmbeddings
         embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     return embeddings
 
 def get_llm():
     global llm
     if llm is None:
+        from langchain_google_genai import ChatGoogleGenerativeAI
         llm = ChatGoogleGenerativeAI(
             model="gemini-2.5-flash",
             google_api_key=os.getenv("GEMINI_API_KEY")
         )
     return llm
+
+def get_vectorstore():
+    from langchain_community.vectorstores import Chroma
+    return Chroma(
+        persist_directory="./chroma_db",
+        embedding_function=get_embeddings()
+    )
 
 # ── Database (SQLite chat history) ─────────────────────────────────────────
 
@@ -159,6 +163,10 @@ async def upload_paper(files: list[UploadFile] = File(...), generate_summaries: 
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
+        from langchain_community.document_loaders import PyPDFLoader
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+        from langchain_community.vectorstores import Chroma
+
         loader = PyPDFLoader(temp_path)
         pages = loader.load()
 
@@ -200,10 +208,7 @@ async def upload_paper(files: list[UploadFile] = File(...), generate_summaries: 
 async def ask_question(question: str, session_id: str = "default"):
     history = get_history(session_id)
 
-    vectorstore = Chroma(
-        persist_directory="./chroma_db",
-        embedding_function=get_embeddings()
-    )
+    vectorstore = get_vectorstore()
 
     all_docs = vectorstore.get()
     available_files = list(set([
@@ -292,10 +297,7 @@ Answer:"""
 
 @app.post("/flashcards")
 async def generate_flashcards(filename: str, count: int = 10):
-    vectorstore = Chroma(
-        persist_directory="./chroma_db",
-        embedding_function=get_embeddings()
-    )
+    vectorstore = get_vectorstore()
 
     docs = vectorstore.similarity_search(
         f"key concepts from {filename}", k=10,
@@ -326,10 +328,7 @@ Return ONLY a JSON array in this exact format, no other text:
 
 @app.post("/debate")
 async def paper_debate(question: str, paper_a: str, paper_b: str):
-    vectorstore = Chroma(
-        persist_directory="./chroma_db",
-        embedding_function=get_embeddings()
-    )
+    vectorstore = get_vectorstore()
 
     docs_a = vectorstore.similarity_search(question, k=4, filter={"source_file": paper_a})
     docs_b = vectorstore.similarity_search(question, k=4, filter={"source_file": paper_b})
