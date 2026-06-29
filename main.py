@@ -27,11 +27,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    google_api_key=os.getenv("GEMINI_API_KEY")
-)
+embeddings = None
+llm = None
+
+def get_embeddings():
+    global embeddings
+    if embeddings is None:
+        embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    return embeddings
+
+def get_llm():
+    global llm
+    if llm is None:
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.5-flash",
+            google_api_key=os.getenv("GEMINI_API_KEY")
+        )
+    return llm
 
 # ── Database (SQLite chat history) ─────────────────────────────────────────
 
@@ -97,7 +109,7 @@ Generate a summary in exactly this format:
 💡 **Key Findings/Points**: [3-5 most important takeaways]
 ⚠️ **Limitations/Gaps**: [what's missing or limitations mentioned]
 🏷️ **Best For**: [who should read this and why]"""
-    response = llm.invoke(prompt)
+    response = get_llm().invoke(prompt)
     return response.content
 
 def classify_query(question, available_files):
@@ -117,7 +129,7 @@ Question: {question}
 
 Respond with ONLY the category word, nothing else."""
 
-    response = llm.invoke(classify_prompt)
+    response = get_llm().invoke(classify_prompt)
     category = response.content.strip().lower()
 
     if category not in ["summary", "factual", "compare", "general"]:
@@ -161,7 +173,7 @@ async def upload_paper(files: list[UploadFile] = File(...), generate_summaries: 
 
         Chroma.from_documents(
             documents=chunks,
-            embedding=embeddings,
+            embedding=get_embeddings(),
             persist_directory="./chroma_db"
         )
 
@@ -190,7 +202,7 @@ async def ask_question(question: str, session_id: str = "default"):
 
     vectorstore = Chroma(
         persist_directory="./chroma_db",
-        embedding_function=embeddings
+        embedding_function=get_embeddings()
     )
 
     all_docs = vectorstore.get()
@@ -213,7 +225,7 @@ And this follow-up question: {question}
 
 Rewrite the follow-up question as a standalone question with full context.
 Return only the rewritten question, nothing else."""
-        rewritten = llm.invoke(rewrite_prompt)
+        rewritten = get_llm().invoke(rewrite_prompt)
         search_query = rewritten.content
     else:
         search_query = question
@@ -260,7 +272,7 @@ Current question: {question}
 
 Answer:"""
 
-    response = llm.invoke(prompt)
+    response = get_llm().invoke(prompt)
     save_message(session_id, question, response.content)
 
     return {
@@ -282,7 +294,7 @@ Answer:"""
 async def generate_flashcards(filename: str, count: int = 10):
     vectorstore = Chroma(
         persist_directory="./chroma_db",
-        embedding_function=embeddings
+        embedding_function=get_embeddings()
     )
 
     docs = vectorstore.similarity_search(
@@ -302,7 +314,7 @@ Return ONLY a JSON array in this exact format, no other text:
   {{"question": "Define Y", "answer": "Y refers to..."}}
 ]"""
 
-    response = llm.invoke(prompt)
+    response = get_llm().invoke(prompt)
     clean = re.sub(r'```json|```', '', response.content).strip()
     flashcards = json.loads(clean)
 
@@ -316,7 +328,7 @@ Return ONLY a JSON array in this exact format, no other text:
 async def paper_debate(question: str, paper_a: str, paper_b: str):
     vectorstore = Chroma(
         persist_directory="./chroma_db",
-        embedding_function=embeddings
+        embedding_function=get_embeddings()
     )
 
     docs_a = vectorstore.similarity_search(question, k=4, filter={"source_file": paper_a})
@@ -352,7 +364,7 @@ Structure your response exactly like this:
 🏆 **Verdict:**
 [Which document makes a stronger case and why]"""
 
-    response = llm.invoke(prompt)
+    response = get_llm().invoke(prompt)
 
     return {
         "question": question,
@@ -365,3 +377,8 @@ Structure your response exactly like this:
 def clear_history_route(session_id: str = "default"):
     clear_session(session_id)
     return {"message": "Chat history cleared"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
