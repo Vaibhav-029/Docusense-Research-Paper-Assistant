@@ -381,6 +381,7 @@
     async function clearChat() {
         try {
             await fetch(`${API_BASE}/clear/${sessionId}`, { method: 'DELETE' });
+            await fetch(`${API_BASE}/reset`, { method: 'DELETE' });
         } catch (e) {}
         sessionId = 'session_' + Date.now();
         document.getElementById('chatArea').innerHTML = `

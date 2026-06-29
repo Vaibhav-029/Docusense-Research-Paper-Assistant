@@ -265,17 +265,16 @@ Return only the rewritten question, nothing else."""
             for msg in history[-3:]
         ])
 
-    prompt = f"""You are a research paper assistant.
-Use the following context to answer the question.
-Always cite which part of the document your answer comes from.
+    prompt = f"""You are a document Q&A assistant. You must ONLY answer based on the provided document context below.
+Do NOT use any outside knowledge. If the answer is not found in the context, say "I couldn't find this information in the uploaded document(s)."
 
 Document context:
 {context}
 {history_context}
 
-Current question: {question}
+Question: {question}
 
-Answer:"""
+Answer (based strictly on the above context):"""
 
     response = get_llm().invoke(prompt)
     save_message(session_id, question, response.content)
@@ -376,6 +375,13 @@ Structure your response exactly like this:
 def clear_history_route(session_id: str = "default"):
     clear_session(session_id)
     return {"message": "Chat history cleared"}
+
+@app.delete("/reset")
+def reset_vectorstore():
+    """Clear all uploaded document data from ChromaDB"""
+    if os.path.exists("./chroma_db"):
+        shutil.rmtree("./chroma_db")
+    return {"message": "All uploaded documents cleared"}
 
 
 if __name__ == "__main__":
